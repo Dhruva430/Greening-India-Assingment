@@ -28,6 +28,7 @@ type UpdateProjectParams struct {
 type ProjectRepository interface {
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]Project, int, error)
 	GetByID(ctx context.Context, id string) (*Project, error)
+	HasAccess(ctx context.Context, projectID, userID string) (bool, error)
 	Create(ctx context.Context, params CreateProjectParams) (*Project, error)
 	Update(ctx context.Context, id string, params UpdateProjectParams) (*Project, error)
 	Delete(ctx context.Context, id string) error

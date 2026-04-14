@@ -8,9 +8,20 @@ interface TaskFilters {
   assignee_id?: string;
 }
 
+interface TasksResponse {
+  tasks: Task[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+function getTaskListKey(projectId: string, filters?: TaskFilters) {
+  return ['tasks', projectId, filters] as const;
+}
+
 export function useTasks(projectId: string, filters?: TaskFilters) {
   return useQuery({
-    queryKey: ['tasks', projectId, filters],
+    queryKey: getTaskListKey(projectId, filters),
     queryFn: () => tasksApi.getTasks(projectId, filters),
     enabled: !!projectId,
   });
@@ -34,13 +45,12 @@ export function useUpdateTask() {
     mutationFn: ({ id, ...data }: Partial<Task> & { id: string }) =>
       tasksApi.updateTask(id, data),
     onMutate: async (variables) => {
-      // Optimistic update: snapshot current cache and apply changes immediately
-      const queryKey = ['tasks', variables.project_id];
+      const queryKey = ['tasks', variables.project_id] as const;
       await qc.cancelQueries({ queryKey });
-      const previous = qc.getQueryData(queryKey);
+      const previous = qc.getQueriesData<TasksResponse>({ queryKey });
 
-      qc.setQueriesData<{ tasks: Task[] } | undefined>(
-        { queryKey: ['tasks'] },
+      qc.setQueriesData<TasksResponse>(
+        { queryKey },
         (old) => {
           if (!old?.tasks) return old;
           return {
@@ -50,11 +60,13 @@ export function useUpdateTask() {
         }
       );
 
-      return { previous, queryKey };
+      return { previous };
     },
     onError: (_err, _variables, context) => {
       if (context?.previous) {
-        qc.setQueryData(context.queryKey, context.previous);
+        for (const [queryKey, data] of context.previous) {
+          qc.setQueryData(queryKey, data);
+        }
       }
     },
     onSettled: (_data, _err, variables) => {

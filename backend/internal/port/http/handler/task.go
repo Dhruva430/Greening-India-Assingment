@@ -73,6 +73,11 @@ func mapTaskResponse(t *domain.Task) taskResponse {
 }
 
 func (h *TaskHandler) List(c *gin.Context) {
+	userID, ok := util.GetUserID(c)
+	if !ok {
+		return
+	}
+
 	projectID, err := parseUUID(c, "id")
 	if err != nil {
 		return
@@ -95,10 +100,14 @@ func (h *TaskHandler) List(c *gin.Context) {
 		Limit:    limit,
 	}
 
-	tasks, total, err := h.taskService.List(c.Request.Context(), projectID, filter)
+	tasks, total, err := h.taskService.List(c.Request.Context(), projectID, userID, filter)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			abort(c, apperr.NotFound("not found"))
+			return
+		}
+		if errors.Is(err, domain.ErrForbidden) {
+			abort(c, apperr.Forbidden("forbidden"))
 			return
 		}
 		abort(c, apperr.Server("failed to list tasks", err))
@@ -158,10 +167,14 @@ func (h *TaskHandler) Create(c *gin.Context) {
 		params.DueDate = &t
 	}
 
-	task, err := h.taskService.Create(c.Request.Context(), params)
+	task, err := h.taskService.Create(c.Request.Context(), userID, params)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			abort(c, apperr.NotFound("project not found"))
+			return
+		}
+		if errors.Is(err, domain.ErrForbidden) {
+			abort(c, apperr.Forbidden("forbidden"))
 			return
 		}
 		abort(c, apperr.Server("failed to create task", err))
@@ -172,6 +185,11 @@ func (h *TaskHandler) Create(c *gin.Context) {
 }
 
 func (h *TaskHandler) Update(c *gin.Context) {
+	userID, ok := util.GetUserID(c)
+	if !ok {
+		return
+	}
+
 	id, err := parseUUID(c, "id")
 	if err != nil {
 		return
@@ -200,10 +218,14 @@ func (h *TaskHandler) Update(c *gin.Context) {
 		params.DueDate = &t
 	}
 
-	task, err := h.taskService.Update(c.Request.Context(), id, params)
+	task, err := h.taskService.Update(c.Request.Context(), id, userID, params)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			abort(c, apperr.NotFound("not found"))
+			return
+		}
+		if errors.Is(err, domain.ErrForbidden) {
+			abort(c, apperr.Forbidden("forbidden"))
 			return
 		}
 		abort(c, apperr.Server("failed to update task", err))

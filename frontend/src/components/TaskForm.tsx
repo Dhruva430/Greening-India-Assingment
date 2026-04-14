@@ -37,14 +37,26 @@ export default function TaskForm({ initial, onSubmit, loading, members = [] }: T
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
+      setShowDropdown(false);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      const results = await searchUsers(searchQuery);
-      setSearchResults(results);
-      setShowDropdown(true);
+      try {
+        const results = await searchUsers(searchQuery);
+        if (cancelled) return;
+        setSearchResults(results);
+        setShowDropdown(true);
+      } catch {
+        if (cancelled) return;
+        setSearchResults([]);
+        setShowDropdown(false);
+      }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [searchQuery]);
 
   useEffect(() => {

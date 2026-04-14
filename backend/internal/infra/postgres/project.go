@@ -67,6 +67,20 @@ func (r *ProjectRepository) GetByID(ctx context.Context, id string) (*domain.Pro
 	return &p, err
 }
 
+func (r *ProjectRepository) HasAccess(ctx context.Context, projectID, userID string) (bool, error) {
+	var hasAccess bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM projects p
+			LEFT JOIN tasks t ON t.project_id = p.id
+			WHERE p.id = $1
+			  AND (p.owner_id = $2 OR t.assignee_id = $2)
+		)
+	`, projectID, userID).Scan(&hasAccess)
+	return hasAccess, err
+}
+
 func (r *ProjectRepository) Create(ctx context.Context, params domain.CreateProjectParams) (*domain.Project, error) {
 	var p domain.Project
 	err := r.pool.QueryRow(ctx,

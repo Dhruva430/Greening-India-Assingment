@@ -42,6 +42,10 @@ func main() {
 	slog.Info("database connected")
 
 	runMigrations(cfg.Database.URL)
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		slog.Info("migration command completed")
+		return
+	}
 	runSeed(dbpool)
 
 	// Repositories
@@ -71,7 +75,7 @@ func main() {
 		Project: projectHandler,
 		Task:    taskHandler,
 		User:    userHandler,
-	}, authMiddleware, cfg.App.CORSOrigin)
+	}, authMiddleware, cfg.App.CORSOrigins, cfg.App.CORSCredentials)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.App.Port),

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/dhruva/taskflow/backend/internal/domain"
@@ -39,7 +40,11 @@ func NewAuthService(users domain.UserRepository, jwtSecret string) *AuthService 
 
 func (s *AuthService) Register(ctx context.Context, params RegisterParams) (*AuthResult, error) {
 	existing, err := s.users.GetByEmail(ctx, params.Email)
-	if err == nil && existing != nil {
+	if err != nil {
+		if !errors.Is(err, domain.ErrNotFound) {
+			return nil, err
+		}
+	} else if existing != nil {
 		return nil, domain.ErrEmailExists
 	}
 

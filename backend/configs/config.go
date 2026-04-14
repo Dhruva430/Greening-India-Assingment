@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -13,9 +14,10 @@ type DatabaseConfig struct {
 }
 
 type ApplicationConfig struct {
-	Port        int
-	JWTSecret   string
-	CORSOrigin  string
+	Port            int
+	JWTSecret       string
+	CORSOrigins     []string
+	CORSCredentials bool
 }
 
 type Config struct {
@@ -43,9 +45,10 @@ func Load() (*Config, error) {
 			URL: dbURL,
 		},
 		App: ApplicationConfig{
-			Port:       port,
-			JWTSecret:  jwtSecret,
-			CORSOrigin: getEnvWithDefault("CORS_ORIGIN", "*"),
+			Port:            port,
+			JWTSecret:       jwtSecret,
+			CORSOrigins:     parseCORSOrigins(getEnvWithDefault("CORS_ORIGIN", "*")),
+			CORSCredentials: shouldAllowCORSCredentials(getEnvWithDefault("CORS_ORIGIN", "*")),
 		},
 	}, nil
 }
@@ -75,4 +78,28 @@ func getEnvAsIntWithDefault(key string, defaultValue int) int {
 		return defaultValue
 	}
 	return n
+}
+
+func parseCORSOrigins(value string) []string {
+	parts := strings.Split(value, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		origin := strings.TrimSpace(part)
+		if origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	if len(origins) == 0 {
+		return []string{"*"}
+	}
+	return origins
+}
+
+func shouldAllowCORSCredentials(value string) bool {
+	for _, origin := range parseCORSOrigins(value) {
+		if origin == "*" {
+			return false
+		}
+	}
+	return true
 }
